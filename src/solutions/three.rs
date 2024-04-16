@@ -1,29 +1,78 @@
+use std::env;
+use std::fs;
+
 struct EnginePart<'a> {
     value: &'a str,
     pos_x: i32,
     pos_y: i32
 }
 
-fn get_neighbors(coord: (i32, i32), size: i32) -> Vec<(i32, i32)> {
-    let mut res = Vec::new();
-
-    for (dr, dc) in (-1..=1).flat_map(|dr| (-1..=size).map(move |dc| (dr, dc))) {
-        if dr == 0 && (dc != -1 && dc != size) { continue; }
-        res.push((coord.0 + dr, coord.1 + dc));
-    }
-
-    res
+struct Graph {
+    elements: Vec<Vec<char>>,
+    size: (usize, usize)
 }
 
-fn is_target_part(graph: Vec<Vec<char>>, engine_part: EnginePart) -> bool {
-    let m = graph.len() as i32;
-    let n = graph[0].len() as i32;
+impl Graph {
+    fn build(data: &str) -> Result<Self, &'static str> {
+        if data.len() == 0 {
+            return Err("No data found in input list!");
+        }
 
-    get_neighbors((engine_part.pos_y, engine_part.pos_x), engine_part.value.len() as i32)
+        let elements: Vec<_> = data
+            .lines()
+            .filter(|line| !line.is_empty())
+            .map(|line| line.chars().collect::<Vec<_>>())
+            .collect();
+
+        let size = (elements.len(), elements[0].len());
+
+        Ok( Graph { elements, size } )
+    }
+
+    fn get(&self, coord: (i32, i32)) -> Option<char> {
+        let convert_coord = (coord.0 as usize, coord.1 as usize);
+
+        if 
+            convert_coord.0 >= self.size.0 ||
+            convert_coord.1 >= self.size.1
+         {
+            return None;
+        }
+
+        Some(self.elements[convert_coord.0][convert_coord.1])
+    }
+
+    fn neighbors(&self, coord: (i32, i32), size: i32) -> Vec<Option<char>> {
+        let mut res = Vec::new();
+
+        for (dr, dc) in (-1..=1).flat_map(|dr| (-1..=size).map(move |dc| (dr, dc))) {
+            if dr == 0 && (dc != -1 && dc != size) { continue; }
+            res.push(self.get((coord.0 + dr, coord.1 + dc)));
+        }
+
+        res
+    }
+}
+
+fn is_target_part(graph: Graph, engine_part: EnginePart) -> bool {
+    graph.neighbors((engine_part.pos_y, engine_part.pos_x), engine_part.value.len() as i32)
         .iter()
-        .filter(|x| x.0 >= 0 && x.0 < m && x.1 >= 0 && x.1 < n)
-        .map(|m| graph[m.0 as usize][m.1 as usize])
+        .filter_map(|&x| x)
         .any(|z| z != '.' && !z.is_digit(10))
+}
+
+fn extract_contents<T: Iterator<Item = String>>(mut args: T) -> Result<String, &'static str> {
+    args.next();
+    
+    let file_path = match args.next() {
+        Some(arg) => arg,
+        None => return Err("Didn't get a file path for the data!")
+    };
+
+    fs::read_to_string(file_path).map_err(|_| "Failed to read file! Does it exist?")
+}
+
+pub fn main() {
 }
 
 #[cfg(test)]
@@ -32,11 +81,14 @@ mod tests {
 
     #[test]
     fn test_target_part_boundary() {
-        let graph = vec![
+        let elements = vec![
             vec!['4', '4', '0', '1', '.', '.', '.', '.', '.'],
             vec!['.', '.', '.', '.', '*', '.', '.', '.', '.'],
             vec!['.', '.', '.', '.', '.', '.', '.', '.', '.'],
         ];
+        let size = (elements.len(), elements[0].len());
+
+        let graph = Graph { elements, size };
 
         let engine_part = EnginePart {
             value: "4401",
@@ -49,11 +101,14 @@ mod tests {
 
     #[test]
     fn test_target_part_true() {
-        let graph = vec![
+        let elements = vec![
             vec!['.', '.', '.', '.', '.', '@', '.', '.', '.'],
             vec!['.', '.', '.', '4', '4', '0', '1', '.', '.'],
             vec!['.', '.', '.', '.', '.', '.', '.', '.', '.'],
         ];
+        let size = (elements.len(), elements[0].len());
+
+        let graph = Graph { elements, size };
 
         let engine_part = EnginePart {
             value: "4401",
@@ -66,11 +121,14 @@ mod tests {
 
     #[test]
     fn test_target_part_false() {
-        let graph = vec![
+        let elements = vec![
             vec!['.', '.', '.', '.', '.', '.', '.', '.', '.'],
             vec!['.', '.', '.', '4', '4', '0', '1', '.', '.'],
             vec!['.', '.', '.', '.', '.', '.', '.', '.', '.'],
         ];
+        let size = (elements.len(), elements[0].len());
+
+        let graph = Graph { elements, size };
 
         let engine_part = EnginePart {
             value: "4401",
@@ -83,13 +141,23 @@ mod tests {
 
     #[test]
     fn test_neighbors() {
+        let elements = vec![
+            vec!['.', '.', '.', '.', '.', '.', '@', '.', '.'],
+            vec!['.', '.', '.', '4', '4', '0', '1', '.', '.'],
+            vec!['.', '.', '.', '.', '.', '*', '.', '.', '.'],
+        ];
+        let size = (elements.len(), elements[0].len());
+
+        let graph = Graph { elements, size };
         let engine_part = EnginePart {
             value: "4401",
             pos_x: 4,
             pos_y: 2
         };
 
-        let mut exp_vec = vec![(2,3), (1, 3), (1, 4), (1, 5), (1, 6), (1, 7), (1, 8), (2, 8), (3, 8), (3, 7), (3, 6), (3, 5), (3, 4), (3, 3)];
-        assert_eq!(exp_vec.sort(), get_neighbors((engine_part.pos_y, engine_part.pos_x), engine_part.value.len() as i32).sort())
+        let mut exp_vec = vec!['.'; 12];
+        exp_vec.push('@');
+        exp_vec.push('*');
+        assert_eq!(exp_vec.sort(), graph.neighbors((engine_part.pos_y, engine_part.pos_x), engine_part.value.len() as i32).sort())
     }
 }
