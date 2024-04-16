@@ -1,3 +1,5 @@
+use aoc23::run_day;
+
 fn main() {
-    println!("Hello, world!");
+    run_day(2);
 }
