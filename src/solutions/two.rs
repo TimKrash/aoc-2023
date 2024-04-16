@@ -1,4 +1,3 @@
-use std::cmp::Ordering;
 use std::fs;
 use std::process;
 use std::env;
@@ -10,33 +9,11 @@ enum Color {
     Green
 }
 
-#[derive(Eq)]
+#[derive(Debug)]
 struct CubeSet {
     red: i32,
     blue: i32,
     green: i32
-}
-
-impl PartialEq for CubeSet {
-    fn eq(&self, other: &Self) -> bool {
-        self.red == other.red &&
-        self.green == other.green &&
-        self.blue == other.blue
-    }
-}
-
-impl PartialOrd for CubeSet {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(&other))
-    }
-}
-
-impl Ord for CubeSet {
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.red.cmp(&other.red)
-            .then(self.green.cmp(&other.green))
-            .then(self.blue.cmp(&other.blue))
-    }
 }
 
 impl CubeSet {
@@ -50,6 +27,12 @@ impl CubeSet {
             blue,
             green
         }
+    }
+
+    fn larger_than(&self, other: &CubeSet) -> bool {
+        self.red >= other.red &&
+        self.green >= other.green &&
+        self.blue >= other.blue
     }
 }
 
@@ -73,7 +56,7 @@ fn extract_max_for_color(color: Color, input: &str) -> Result<i32, &'static str>
     Ok(max_val)
 }
 
-fn calculate_val<T>(mut args: T) -> Result<i32, &'static str>
+fn calculate_val<T>(mut args: T) -> Result<usize, &'static str>
 where
     T: Iterator<Item = String>
 {
@@ -89,10 +72,10 @@ where
 
     let global_cap = CubeSet { red: 12, green: 13, blue: 14 };
     let mut res = 0;
-    for line in content.lines() {
+    for (idx, line) in content.lines().enumerate() {
         let curr_set = CubeSet::build(&line);
-        if curr_set < global_cap {
-            res += 1;
+        if global_cap.larger_than(&curr_set) {
+            res += idx + 1;
         }
     }
 
@@ -131,12 +114,12 @@ mod tests {
         };
 
         let cs_test = CubeSet {
-            red: 16,
+            red: 1,
             blue: 9,
             green: 17
         };
 
-        assert!(cs_cap < cs_test)
+        assert!(!cs_cap.larger_than(&cs_test))
     }
 
     #[test]
@@ -153,7 +136,7 @@ mod tests {
             green: 11
         };
 
-        assert!(cs_cap >= cs_test)
+        assert!(cs_cap.larger_than(&cs_test))
     }
 
     #[test]
@@ -170,6 +153,6 @@ mod tests {
             green: 14
         };
 
-        assert!(cs_cap >= cs_test)
+        assert!(cs_cap.larger_than(&cs_test))
     }
 }
