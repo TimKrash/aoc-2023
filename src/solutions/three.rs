@@ -1,10 +1,52 @@
 use std::env;
 use std::fs;
+use regex::Regex;
 
+#[derive(Debug, Eq)]
 struct EnginePart<'a> {
     value: &'a str,
     pos_x: i32,
     pos_y: i32
+}
+
+impl PartialEq for EnginePart<'_> {
+    fn eq(&self, other: &Self) -> bool {
+        self.value == other.value &&
+        self.pos_x == other.pos_x &&
+        self.pos_y == other.pos_y
+    }
+}
+
+// basically this function uses regex to extract out (line_idx, col_idx, integer_as_string) for
+// each line's digits
+fn match_extract<'a>(line: &'a str) -> Vec<(usize, &str)> { 
+    let re = Regex::new(r"\d+").unwrap();
+    let mut res: Vec<(usize, &str)> = Vec::new();
+    for mat in re.find_iter(line) {
+        res.push((mat.start(), mat.as_str()))
+    }
+
+    res
+}
+
+fn build_engine_parts(data: &str) -> Result<Vec<EnginePart>, &'static str> {
+    if data.len() == 0 {
+        return Err("No data found while building engine parts!");
+    }
+    let mut res: Vec<EnginePart> = Vec::new();
+    let re = Regex::new(r"\d+").map_err(|_| "Issue with regex pattern").unwrap();
+
+    for (line_idx, line) in data.lines().enumerate() {
+        for mat in re.find_iter(line) {
+            res.push(EnginePart {
+                value: mat.as_str(),
+                pos_y: line_idx as i32,
+                pos_x: mat.start() as i32
+            })
+        }
+    }
+
+    Ok(res)
 }
 
 struct Graph {
@@ -159,5 +201,36 @@ mod tests {
         exp_vec.push('@');
         exp_vec.push('*');
         assert_eq!(exp_vec.sort(), graph.neighbors((engine_part.pos_y, engine_part.pos_x), engine_part.value.len() as i32).sort())
+    }
+
+    #[test]
+    fn test_engine_part_build() {
+        let data = "...4401...12..\n351..$..#...3.";
+
+        let expect_res: Vec<EnginePart> = vec![
+            EnginePart {
+                value: "4401",
+                pos_x: 3,
+                pos_y: 0
+            },
+            EnginePart {
+                value: "12",
+                pos_x: 10,
+                pos_y: 0
+            },
+            EnginePart {
+                value: "351",
+                pos_x: 0,
+                pos_y: 1
+            },
+            EnginePart {
+                value: "3",
+                pos_x: 12,
+                pos_y: 1
+            }
+        ];
+
+        let res = build_engine_parts(&data).unwrap();
+        assert_eq!(expect_res, res);
     }
 }
