@@ -56,39 +56,42 @@ fn extract_max_for_color(color: Color, input: &str) -> Result<i32, &'static str>
     Ok(max_val)
 }
 
-fn calculate_val<T>(mut args: T) -> Result<usize, &'static str>
+fn calculate_val<T>(mut args: T) -> Result<(usize, usize), &'static str>
 where
     T: Iterator<Item = String>
 {
     args.next();
 
     // Get file path
-    let file_path = match args.next() {
+    let file_path: String = match args.next() {
         Some(arg) => arg,
         None => return Err("Didn't get a file path for data!")
     };
 
-    let content = fs::read_to_string(file_path).unwrap();
+    let content = fs::read_to_string(file_path).map_err(|_| "Failed to read file! Does it exist?")?;
 
     let global_cap = CubeSet { red: 12, green: 13, blue: 14 };
-    let mut res = 0;
+    let mut part_one_sum = 0;
+    let mut part_two_sum = 0;
     for (idx, line) in content.lines().enumerate() {
         let curr_set = CubeSet::build(&line);
+        part_two_sum += curr_set.red * curr_set.blue * curr_set.green;
         if global_cap.larger_than(&curr_set) {
-            res += idx + 1;
+            part_one_sum += idx + 1;
         }
     }
 
-    Ok(res)
+    Ok((part_one_sum, part_two_sum as usize))
 }
 
 pub fn main() {
-    let res = calculate_val(env::args()).unwrap_or_else(|err| {
+    let (part_one_res, part_two_res) = calculate_val(env::args()).unwrap_or_else(|err| {
         eprintln!("Failure in parsing arguments: {err}");
         process::exit(1);
     });
 
-    println!("Got result: {res}");
+    println!("Part 1 result: {part_one_res}");
+    println!("Part 2 result: {part_two_res}");
 }
 
 #[cfg(test)]
