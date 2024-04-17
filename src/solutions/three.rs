@@ -85,7 +85,7 @@ impl Graph {
     }
 }
 
-fn is_target_part(graph: &Graph, engine_part: EnginePart) -> bool {
+fn is_target_part(graph: &Graph, engine_part: &EnginePart) -> bool {
     graph.neighbors((engine_part.pos_y, engine_part.pos_x), engine_part.value.len() as i32)
         .iter()
         .filter_map(|&x| x)
@@ -121,8 +121,8 @@ pub fn main() {
 
     let mut res = 0;
     for part in engine_parts {
-        if is_target_part(&graph, part) {
-            res += 1;
+        if is_target_part(&graph, &part) {
+            res += part.value.parse::<i32>().unwrap();
         }
     }
 
@@ -150,7 +150,7 @@ mod tests {
             pos_y: 0
         };
 
-        assert!(is_target_part(graph, engine_part));
+        assert!(is_target_part(&graph, &engine_part));
     }
 
     #[test]
@@ -170,7 +170,7 @@ mod tests {
             pos_y: 1
         };
 
-        assert!(is_target_part(graph, engine_part));
+        assert!(is_target_part(&graph, &engine_part));
     }
 
     #[test]
@@ -190,7 +190,7 @@ mod tests {
             pos_y: 1
         };
 
-        assert!(!is_target_part(graph, engine_part));
+        assert!(!is_target_part(&graph, &engine_part));
     }
 
     #[test]
