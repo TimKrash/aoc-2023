@@ -1,6 +1,7 @@
 use std::env;
 use std::fs;
 use regex::Regex;
+use std::process;
 
 #[derive(Debug, Eq)]
 struct EnginePart<'a> {
@@ -15,18 +16,6 @@ impl PartialEq for EnginePart<'_> {
         self.pos_x == other.pos_x &&
         self.pos_y == other.pos_y
     }
-}
-
-// basically this function uses regex to extract out (line_idx, col_idx, integer_as_string) for
-// each line's digits
-fn match_extract<'a>(line: &'a str) -> Vec<(usize, &str)> { 
-    let re = Regex::new(r"\d+").unwrap();
-    let mut res: Vec<(usize, &str)> = Vec::new();
-    for mat in re.find_iter(line) {
-        res.push((mat.start(), mat.as_str()))
-    }
-
-    res
 }
 
 fn build_engine_parts(data: &str) -> Result<Vec<EnginePart>, &'static str> {
@@ -96,7 +85,7 @@ impl Graph {
     }
 }
 
-fn is_target_part(graph: Graph, engine_part: EnginePart) -> bool {
+fn is_target_part(graph: &Graph, engine_part: EnginePart) -> bool {
     graph.neighbors((engine_part.pos_y, engine_part.pos_x), engine_part.value.len() as i32)
         .iter()
         .filter_map(|&x| x)
@@ -115,6 +104,29 @@ fn extract_contents<T: Iterator<Item = String>>(mut args: T) -> Result<String, &
 }
 
 pub fn main() {
+    let data = extract_contents(env::args()).unwrap_or_else(|err| {
+        eprintln!("Failed to extract data from input file: {err}");
+        process::exit(1);
+    });
+
+    let graph = Graph::build(&data).unwrap_or_else(|err| {
+        eprintln!("Failed to generate graph: {err}");
+        process::exit(1);
+    });
+
+    let engine_parts = build_engine_parts(&data).unwrap_or_else(|err| {
+        eprintln!("Failed to extract engine parts: {err}");
+        process::exit(1);
+    });
+
+    let mut res = 0;
+    for part in engine_parts {
+        if is_target_part(&graph, part) {
+            res += 1;
+        }
+    }
+
+    println!("Part 1 result: {res}");
 }
 
 #[cfg(test)]
