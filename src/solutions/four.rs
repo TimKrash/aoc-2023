@@ -1,6 +1,17 @@
 use std::{collections::HashSet, env, fs, process::exit};
+use regex::Regex;
 
-fn get_result(left: Vec<&str>, right: Vec<&str>) -> i32 {
+fn update_scratchcards(card_num: usize, num_copies: usize, scratch_cards: &mut Vec<usize>) {
+    for copy_idx in card_num+1..card_num+num_copies+1 {
+        if copy_idx >= scratch_cards.len() {
+            scratch_cards.push(1);
+        } else {
+            scratch_cards[copy_idx-1] += scratch_cards[card_num-1];
+        }
+    }
+}
+
+fn get_num_matches(left: Vec<&str>, right: Vec<&str>) -> u32 {
     let mut set: HashSet<i32> = HashSet::new();
     let mut exp = 0;
     for s in left {
@@ -19,8 +30,18 @@ fn get_result(left: Vec<&str>, right: Vec<&str>) -> i32 {
 
     if exp == 0 { return 0; }
 
-    let base: i32 = 2;
-    base.pow(exp - 1)
+    exp
+}
+
+fn get_card_number(data: &str) -> usize {
+    let re = Regex::new(r"Card\s+(\d+):").unwrap();
+    re.captures(data)
+        .unwrap()
+        .get(1)
+        .unwrap()
+        .as_str()
+        .parse::<usize>()
+        .expect("Expected an integer, got err")
 }
 
 fn get_idx_of_col_and_bar(data: &str) -> Result<(Option<usize>, Option<usize>), &'static str> {
@@ -52,20 +73,33 @@ fn extract_contents<T: Iterator<Item = String>>(mut args: T) -> Result<String, &
     }
 }
 
-fn run(data: &str) -> Result<i32, &'static str> {
-    let mut sum = 0;
+fn run(data: &str) -> Result<(usize, usize), &'static str> {
+    let mut part_one: usize = 0;
+
+    let mut scratch_cards = vec![1; data.lines().count()];
     for line in data.lines() {
         if let Ok(line_idxs) = get_idx_of_col_and_bar(line) {
             let col_idx = line_idxs.0.unwrap();
             let bar_idx = line_idxs.1.unwrap();
 
-            sum += get_result(line[col_idx+1..bar_idx].split(' ').collect(), line[bar_idx+1..].split(' ').collect());
+            let base: i32 = 2;
+            let num_matches = get_num_matches(line[col_idx+1..bar_idx].split(' ').collect(), line[bar_idx+1..].split(' ').collect());
+            if num_matches > 0 {
+                part_one += base.pow(num_matches - 1) as usize;
+            }
+
+            let card_num = get_card_number(line);
+            update_scratchcards(card_num, num_matches as usize, &mut scratch_cards);
         } else {
             return Err("failure in extracting colon and bar from data line");
         }
     }
 
-    Ok(sum)
+    let part_two = scratch_cards
+        .iter()
+        .sum();
+
+    Ok((part_one, part_two))
 }
 
 pub fn main() {
@@ -75,8 +109,22 @@ pub fn main() {
     });
 
     if let Ok(res) = run(&data) {
-        println!("Got result: {res}");
+        println!("Part 1 -- got result: {}", res.0);
+        println!("Part 2 -- got result: {}", res.1);
     } else {
         exit(1);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_scratch_pad_update() {
+        let mut scratch_pad = vec![1, 1, 1, 1, 1];
+        update_scratchcards(2, 5, &mut scratch_pad);
+
+        assert_eq!(scratch_pad, vec![1, 1, 2, 2, 2, 1, 1]);
     }
 }
