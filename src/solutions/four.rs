@@ -3,7 +3,7 @@ use regex::Regex;
 
 fn update_scratchcards(card_num: usize, num_copies: usize, scratch_cards: &mut Vec<usize>) {
     for copy_idx in card_num+1..card_num+num_copies+1 {
-        if copy_idx >= scratch_cards.len() {
+        if copy_idx > scratch_cards.len() {
             scratch_cards.push(1);
         } else {
             scratch_cards[copy_idx-1] += scratch_cards[card_num-1];
